@@ -190,6 +190,7 @@ func (app *Config) sendMail(w http.ResponseWriter, msg MailPayload) {
 
 }
 
+// logEventViaRabbit logs an event using the logger-service. It makes the call by pushing the data to RabbitMQ.
 func (app *Config) logEventViaRabbit(w http.ResponseWriter, l LogPayload) {
 	err := app.pushToQueue(l.Name, l.Data)
 	if err != nil {
@@ -200,23 +201,26 @@ func (app *Config) logEventViaRabbit(w http.ResponseWriter, l LogPayload) {
 	var payload jsonResponse
 	payload.Error = false
 	payload.Message = "logged via RabbitMQ"
+
+	app.writeJSON(w, http.StatusAccepted, payload)
 }
 
-
+// pushToQueue pushes a message into RabbitMQ
 func (app *Config) pushToQueue(name, msg string) error {
 	emitter, err := event.NewEventEmitter(app.Rabbit)
 	if err != nil {
-		return err 
-	}
-	payload := LogPayload {
-		Name: name, 
-		Data: msg, 
+		return err
 	}
 
-	j, _ = json.MarshalIndent(&payload, "", "\t")
+	payload := LogPayload{
+		Name: name,
+		Data: msg,
+	}
+
+	j, _ := json.MarshalIndent(&payload, "", "\t")
 	err = emitter.Push(string(j), "log.INFO")
 	if err != nil {
-		return err 
+		return err
 	}
-	return nil 
+	return nil
 }
